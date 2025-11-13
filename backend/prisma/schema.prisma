@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum Role {
+  USER
+  COMPANY
+  ADMIN
+}
+
+model User {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  name          String
+  number        String?       @unique
+
+  password      String?       // null for OAuth users
+  googleId      String?       @unique
+  githubId      String?       @unique
+
+  role          Role          @default(USER)
+  isActive      Boolean       @default(true)
+
+  organization  Organization?
+  applications  Application[]
+  submissions   Submission[]
+  notifications Notification[]
+}
+
+
+model Organization {
+  id        Int       @id @default(autoincrement())
+  name      String
+  ownerId   Int       @unique
+  owner     User      @relation(fields: [ownerId], references: [id])
+  isActive  Boolean  @default(true)
+  posts     Post[]
+  hackathons Hackathon[]
+}
+
+model Post {
+  id            Int       @id @default(autoincrement())
+  role          String?
+  salary        String?
+  description   String?
+  opening       Int
+  openingDate   DateTime?
+  closingDate   DateTime
+
+  // Relation
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  applications Application[]
+}
+
+model Application {
+  id        Int      @id @default(autoincrement())
+  status    String   @default("PENDING")
+  resumeURL String?
+
+  // Relations
+  userId Int
+  user   User     @relation(fields: [userId], references: [id])
+
+  postId Int
+  post   Post     @relation(fields: [postId], references: [id])
+
+  appliedAt DateTime @default(now())
+}
+
+model Hackathon {
+  id        Int                 @id @default(autoincrement())
+  name      String
+  orgId     Int
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  rounds    HackathonRound[]
+  submissions Submission[]
+}
+
+model HackathonRound {
+  id              Int        @id @default(autoincrement())
+  nameOfTheRound  String?
+  description     String
+  openingDate     DateTime?
+  closingDate     DateTime
+
+  hackathonId Int
+  hackathon   Hackathon   @relation(fields: [hackathonId], references: [id])
+
+  submissions Submission[]
+}
+
+
+model Submission {
+  id            Int             @id @default(autoincrement())
+  link          String?
+  score         Int?            @default(0)
+
+  userId        Int
+  roundId       Int
+  hackathonId   Int
+
+  user          User            @relation(fields: [userId], references: [id])
+  round         HackathonRound  @relation(fields: [roundId], references: [id])
+  hackathon     Hackathon       @relation(fields: [hackathonId], references: [id])
+}
+
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String
+  type      String    // "SHORTLISTED", "SELECTED", "ROUND_STARTED"
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+}
