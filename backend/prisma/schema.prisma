@@ -1,11 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
@@ -14,120 +11,289 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-enum Role {
+enum UserRole {
   USER
   COMPANY
   ADMIN
 }
 
-model User {
-  id            Int           @id @default(autoincrement())
-  email         String        @unique
-  name          String
-  number        String?       @unique
-
-  password      String?       // null for OAuth users
-  googleId      String?       @unique
-  githubId      String?       @unique
-
-  role          Role          @default(USER)
-  isActive      Boolean       @default(true)
-
-  organization  Organization?
-  applications  Application[]
-  submissions   Submission[]
-  notifications Notification[]
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  REJECTED
 }
 
+enum HackathonStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  JUDGING
+  COMPLETED
+  CANCELLED
+}
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?   // null for OAuth-only users
+  firstName     String?
+  lastName      String?
+  role          UserRole  @default(USER)
+  avatarUrl     String?
+  bio           String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // OAuth
+  googleId      String?   @unique
+  githubId      String?   @unique
+
+  // Relations
+  organizations OrganizationMember[]
+  jobs          Job[]
+  applications  Application[]
+  hackathons    HackathonParticipant[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  files         File[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  deviceInfo String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
 
 model Organization {
-  id        Int       @id @default(autoincrement())
-  name      String
-  ownerId   Int       @unique
-  owner     User      @relation(fields: [ownerId], references: [id])
-  isActive  Boolean  @default(true)
-  posts     Post[]
-  hackathons Hackathon[]
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     OrganizationMember[]
+  jobs        Job[]
+  hackathons  Hackathon[]
+
+  @@index([slug])
 }
 
-model Post {
-  id            Int       @id @default(autoincrement())
-  role          String?
-  salary        String?
-  description   String?
-  opening       Int
-  openingDate   DateTime?
-  closingDate   DateTime
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String       @default("MEMBER") // MEMBER, ADMIN, OWNER
+  joinedAt      DateTime     @default(now())
 
-  // Relation
-  organizationId Int
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  applications Application[]
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Job {
+  id             String            @id @default(cuid())
+  title          String
+  description    String
+  location       String?
+  remote         Boolean           @default(false)
+  salaryMin      Int?
+  salaryMax      Int?
+  currency       String?           @default("USD")
+  status         String            @default("OPEN") // OPEN, CLOSED, DRAFT
+  organizationId String?
+  postedById     String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  postedBy       User               @relation(fields: [postedById], references: [id])
+  applications  Application[]
+  tags           JobTag[]
+
+  @@index([organizationId])
+  @@index([postedById])
+  @@index([status])
+}
+
+model JobTag {
+  id    String @id @default(cuid())
+  jobId String
+  name  String
+
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, name])
+  @@index([name])
 }
 
 model Application {
-  id        Int      @id @default(autoincrement())
-  status    String   @default("PENDING")
-  resumeURL String?
+  id        String            @id @default(cuid())
+  jobId     String
+  userId    String
+  resumeUrl String?
+  coverLetter String?
+  status    ApplicationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
-  // Relations
-  userId Int
-  user   User     @relation(fields: [userId], references: [id])
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  postId Int
-  post   Post     @relation(fields: [postId], references: [id])
-
-  appliedAt DateTime @default(now())
+  @@unique([jobId, userId])
+  @@index([userId])
+  @@index([jobId])
+  @@index([status])
 }
 
 model Hackathon {
-  id        Int                 @id @default(autoincrement())
-  name      String
-  orgId     Int
-  organization Organization @relation(fields: [orgId], references: [id])
+  id          String            @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  status      HackathonStatus   @default(DRAFT)
+  imageUrl    String?
+  prizePool   String?
+  rules       String?
+  organizationId String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
-  rounds    HackathonRound[]
-  submissions Submission[]
+  organization Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  participants HackathonParticipant[]
+  rounds       Round[]
+  leaderboard  LeaderboardEntry[]
+
+  @@index([status])
+  @@index([organizationId])
+  @@index([startDate, endDate])
 }
 
-model HackathonRound {
-  id              Int        @id @default(autoincrement())
-  nameOfTheRound  String?
-  description     String
-  openingDate     DateTime?
-  closingDate     DateTime
+model HackathonParticipant {
+  id          String    @id @default(cuid())
+  hackathonId String
+  userId      String
+  joinedAt    DateTime  @default(now())
+  teamName    String?
 
-  hackathonId Int
-  hackathon   Hackathon   @relation(fields: [hackathonId], references: [id])
-
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   submissions Submission[]
+
+  @@unique([hackathonId, userId])
+  @@index([hackathonId])
+  @@index([userId])
 }
 
+model Round {
+  id          String    @id @default(cuid())
+  hackathonId String
+  number      Int
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@unique([hackathonId, number])
+  @@index([hackathonId])
+}
 
 model Submission {
-  id            Int             @id @default(autoincrement())
-  link          String?
-  score         Int?            @default(0)
+  id          String           @id @default(cuid())
+  roundId     String
+  participantId String
+  code        String?          // code submission
+  fileUrl     String?          // file submission
+  status      SubmissionStatus @default(PENDING)
+  score       Float?
+  feedback    String?
+  executionTime Int?           // milliseconds
+  memoryUsed  Int?             // bytes
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  userId        Int
-  roundId       Int
-  hackathonId   Int
+  round       Round            @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participant  HackathonParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
-  user          User            @relation(fields: [userId], references: [id])
-  round         HackathonRound  @relation(fields: [roundId], references: [id])
-  hackathon     Hackathon       @relation(fields: [hackathonId], references: [id])
+  @@index([roundId])
+  @@index([participantId])
+  @@index([status])
+  @@index([score])
 }
 
+model LeaderboardEntry {
+  id          String   @id @default(cuid())
+  hackathonId String
+  userId      String
+  totalScore  Float    @default(0)
+  rank        Int?
+  updatedAt   DateTime @updatedAt
+
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  @@unique([hackathonId, userId])
+  @@index([hackathonId, totalScore])
+}
 
 model Notification {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
   message   String
-  type      String    // "SHORTLISTED", "SELECTED", "ROUND_STARTED"
-  isRead    Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  type      String   // INFO, SUCCESS, WARNING, ERROR
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
 
-  userId    Int
-  user      User      @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
 }
+
+model File {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  type      String   // resume, logo, submission, etc.
+  filename  String
+  size      Int      // bytes
+  mimeType  String?
+  uploadedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
