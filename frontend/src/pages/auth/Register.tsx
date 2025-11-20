@@ -121,7 +121,7 @@ export default function Register() {
                   <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
-                    placeholder="John"
+                    placeholder="Navneet"
                     {...register("firstName")}
                     className={errors.firstName ? "border-destructive" : ""}
                   />
@@ -130,7 +130,7 @@ export default function Register() {
                   <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
-                    placeholder="Doe"
+                    placeholder="Pathak"
                     {...register("lastName")}
                     className={errors.lastName ? "border-destructive" : ""}
                   />

@@ -123,7 +123,7 @@ model Job {
   remote         Boolean           @default(false)
   salaryMin      Int?
   salaryMax      Int?
-  currency       String?           @default("USD")
+  currency       String?           @default("INR")
   status         String            @default("OPEN") // OPEN, CLOSED, DRAFT
   organizationId String?
   postedById     String
