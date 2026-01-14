@@ -63,20 +63,18 @@ export function ApplyJobDialog({ jobId, onClose }: ApplyJobDialogProps) {
             resumeFile.type
           );
           
+          
           // Check if this is Supabase or S3
           if (response.storageType === "supabase" || (response.bucket && response.path)) {
-            // Supabase upload - use Supabase client
-            const { supabaseUploadService } = await import("@/services/supabase-upload.service");
-            const bucket = response.bucket || "talentconnect";
-            const path = response.path || response.key.split("/").slice(1).join("/");
-            
-            const uploadResult = await supabaseUploadService.uploadFile(
-              bucket,
-              path,
-              resumeFile,
-              { contentType: resumeFile.type }
+            // Use proxy upload to avoid CORS issues
+            const { fileToBase64 } = await import("@/utils/file");
+            const base64Content = await fileToBase64(resumeFile);
+            const uploadResult = await uploadService.uploadProxy(
+                "resume",
+                resumeFile,
+                base64Content
             );
-            resumeUrl = uploadResult.fullPath;
+            resumeUrl = uploadResult.key;
           } else {
             // S3 upload (default)
             await uploadService.uploadToS3(response.url, resumeFile);

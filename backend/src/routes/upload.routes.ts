@@ -5,6 +5,7 @@ import { authMiddleware } from "../middleware/auth.middleware";
 const router = Router();
 
 router.get("/presign", authMiddleware, uploadController.getPresignedUrl);
+router.post("/proxy", authMiddleware, uploadController.proxyUpload);
 
 export default router;
 

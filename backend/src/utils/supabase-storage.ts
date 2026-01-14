@@ -100,3 +100,28 @@ export function getPublicUrl(key: string): string {
   return data.publicUrl;
 }
 
+// Helper to upload file buffer
+export async function uploadFile(
+  bucket: string,
+  path: string,
+  file: Buffer,
+  contentType: string
+): Promise<{ path: string; fullPath: string }> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Supabase not configured");
+  }
+
+  const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+    contentType,
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  return {
+    path: data.path,
+    fullPath: `${bucket}/${data.path}`,
+  };
+}

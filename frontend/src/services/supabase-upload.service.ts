@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "@/config/env";
 
 // Initialize Supabase client for frontend (use anon key, not service role!)
-const supabase = createClient(env.SUPABASE_URL || "", env.SUPABASE_ANON_KEY || "");
+// Ensure URL is just the origin by removing any path components
+const supabaseUrl = env.SUPABASE_URL ? new URL(env.SUPABASE_URL).origin : "";
+const supabase = createClient(supabaseUrl, env.SUPABASE_ANON_KEY || "");
 
 export interface UploadResponse {
   url: string;

@@ -103,6 +103,7 @@ export async function register(req: Request, res: Response): Promise<void> {
         error: {
           message: "Validation error",
           code: "VALIDATION_ERROR",
+          details: error.errors,
         },
       });
       return;
@@ -201,6 +202,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         error: {
           message: "Validation error",
           code: "VALIDATION_ERROR",
+          details: error.errors,
         },
       });
       return;

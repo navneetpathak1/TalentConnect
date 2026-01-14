@@ -31,7 +31,7 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
-  FRONTEND_URL: z.string().optional().default("http://localhost:3000"),
+  FRONTEND_URL: z.string().optional().default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);

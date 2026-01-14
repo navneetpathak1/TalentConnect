@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const applySchema = z.object({
   jobId: z.string(),
-  resumeUrl: z.string().url().optional(),
+  resumeUrl: z.string().optional(),
   coverLetter: z.string().optional(),
 });
 
@@ -24,6 +24,7 @@ export async function apply(req: AuthRequest, res: Response): Promise<void> {
       return;
     }
 
+    console.log("Apply request body:", req.body);
     const body = applySchema.parse(req.body);
 
     // Check if job exists
@@ -98,6 +99,7 @@ export async function apply(req: AuthRequest, res: Response): Promise<void> {
         error: {
           message: "Validation error",
           code: "VALIDATION_ERROR",
+          details: error.errors,
         },
       });
       return;

@@ -33,5 +33,22 @@ export const uploadService = {
       },
     });
   },
+
+  async uploadProxy(
+    type: "resume" | "logo" | "submission" | "avatar",
+    file: File,
+    base64Content: string
+  ): Promise<{ url: string; key: string }> {
+    const response = await api.post<{ success: boolean; data: { url: string; key: string } }>(
+      "/upload/proxy",
+      {
+        type,
+        filename: file.name,
+        contentType: file.type,
+        content: base64Content,
+      }
+    );
+    return response.data.data;
+  },
 };
 
