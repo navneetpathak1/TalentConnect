@@ -252,3 +252,49 @@ export async function getJob(req: AuthRequest, res: Response): Promise<void> {
   }
 }
 
+export async function getMyJobs(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+      });
+      return;
+    }
+
+    const jobs = await prisma.job.findMany({
+      where: {
+        postedById: req.user.sub,
+      },
+      include: {
+        organization: true,
+        tags: true,
+        _count: {
+          select: { applications: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: jobs,
+      error: null,
+    });
+  } catch (error) {
+    logger.error({ error }, "Get my jobs error");
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: {
+        message: "Internal server error",
+        code: "INTERNAL_ERROR",
+      },
+    });
+  }
+}
+

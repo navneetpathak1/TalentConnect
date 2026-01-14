@@ -6,6 +6,7 @@ import { requireCompany } from "../middleware/role.middleware";
 const router = Router();
 
 router.post("/", authMiddleware, requireCompany, jobController.createJob);
+router.get("/my/all", authMiddleware, requireCompany, jobController.getMyJobs);
 router.get("/", jobController.getJobs);
 router.get("/:id", jobController.getJob);
 

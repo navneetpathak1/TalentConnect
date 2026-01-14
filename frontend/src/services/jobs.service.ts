@@ -11,6 +11,7 @@ export interface Job {
   currency?: string;
   status: string;
   organizationId?: string;
+  postedById: string;
   organization?: {
     id: string;
     name: string;
@@ -50,6 +51,11 @@ export const jobsService = {
 
   async getJob(id: string): Promise<Job> {
     const response = await api.get<{ success: boolean; data: Job }>(`/jobs/${id}`);
+    return response.data.data;
+  },
+
+  async getMyJobs(): Promise<Job[]> {
+    const response = await api.get<{ success: boolean; data: Job[] }>("/jobs/my/all");
     return response.data.data;
   },
 

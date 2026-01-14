@@ -165,3 +165,218 @@ export async function getMyApplications(req: AuthRequest, res: Response): Promis
   }
 }
 
+
+const updateStatusSchema = z.object({
+  status: z.enum(["PENDING", "REVIEWED", "ACCEPTED", "REJECTED"]),
+});
+
+export async function getJobApplications(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { jobId } = req.params;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+      });
+      return;
+    }
+
+    // Verify job ownership
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { organization: true },
+    });
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Job not found",
+          code: "NOT_FOUND",
+        },
+      });
+      return;
+    }
+
+    // Check if user has access to this job
+    let hasAccess = false;
+    if (job.organizationId) {
+      // Check org membership
+      const membership = await prisma.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: job.organizationId,
+            userId: req.user.sub,
+          },
+        },
+      });
+      if (membership) hasAccess = true;
+    } else {
+      // Check if user is the poster
+      if (job.postedById === req.user.sub) hasAccess = true;
+    }
+
+    if (!hasAccess && req.user.role !== "ADMIN") {
+      res.status(403).json({
+        success: false,
+        data: null,
+        error: {
+          message: "You do not have permission to view applications for this job",
+          code: "FORBIDDEN",
+        },
+      });
+      return;
+    }
+
+    const applications = await prisma.application.findMany({
+      where: { jobId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            bio: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: applications,
+      error: null,
+    });
+  } catch (error) {
+    logger.error({ error }, "Get job applications error");
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: {
+        message: "Internal server error",
+        code: "INTERNAL_ERROR",
+      },
+    });
+  }
+}
+
+export async function updateApplicationStatus(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const body = updateStatusSchema.parse(req.body);
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+      });
+      return;
+    }
+
+    const application = await prisma.application.findUnique({
+      where: { id },
+      include: {
+        job: true,
+      },
+    });
+
+    if (!application) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Application not found",
+          code: "NOT_FOUND",
+        },
+      });
+      return;
+    }
+
+    // Verify job ownership
+    const job = application.job;
+    let hasAccess = false;
+    
+    if (job.organizationId) {
+      const membership = await prisma.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId: job.organizationId,
+            userId: req.user.sub,
+          },
+        },
+      });
+      if (membership) hasAccess = true;
+    } else {
+      if (job.postedById === req.user.sub) hasAccess = true;
+    }
+
+    if (!hasAccess && req.user.role !== "ADMIN") {
+      res.status(403).json({
+        success: false,
+        data: null,
+        error: {
+          message: "You do not have permission to update this application",
+          code: "FORBIDDEN",
+        },
+      });
+      return;
+    }
+
+    const updatedApplication = await prisma.application.update({
+      where: { id },
+      data: { status: body.status },
+      include: {
+        job: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedApplication,
+      error: null,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: {
+          message: "Validation error",
+          code: "VALIDATION_ERROR",
+        },
+      });
+      return;
+    }
+
+    logger.error({ error }, "Update application status error");
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: {
+        message: "Internal server error",
+        code: "INTERNAL_ERROR",
+      },
+    });
+  }
+}

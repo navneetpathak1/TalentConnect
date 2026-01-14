@@ -10,6 +10,7 @@ const AdminDashboard = lazy(() => import("@/pages/dashboard/AdminDashboard").cat
 const JobsList = lazy(() => import("@/pages/jobs/JobsList").catch(() => ({ default: () => <div>Error loading Jobs</div> })));
 const CreateJob = lazy(() => import("@/pages/jobs/CreateJob").catch(() => ({ default: () => <div>Error loading Create Job</div> })));
 const JobDetails = lazy(() => import("@/pages/jobs/JobDetails").catch(() => ({ default: () => <div>Error loading Job Details</div> })));
+const ManageJob = lazy(() => import("@/pages/jobs/ManageJob").catch(() => ({ default: () => <div>Error loading Manage Job</div> })));
 const HackathonList = lazy(() => import("@/pages/hackathons/HackathonList").catch(() => ({ default: () => <div>Error loading Hackathons</div> })));
 const HackathonDetails = lazy(() => import("@/pages/hackathons/HackathonDetails").catch(() => ({ default: () => <div>Error loading Hackathon Details</div> })));
 const HackathonRound = lazy(() => import("@/pages/hackathons/HackathonRound").catch(() => ({ default: () => <div>Error loading Round</div> })));
@@ -32,6 +33,7 @@ export const routes: RouteConfig[] = [
   { path: "/jobs", element: <JobsList /> },
   { path: "/jobs/new", element: <CreateJob />, protected: true, requiredRole: "COMPANY" },
   { path: "/jobs/:id", element: <JobDetails /> },
+  { path: "/jobs/:id/manage", element: <ManageJob />, protected: true, requiredRole: "COMPANY" },
   { path: "/hackathons", element: <HackathonList /> },
   { path: "/hackathons/:id", element: <HackathonDetails /> },
   { path: "/hackathons/:id/rounds/:roundId", element: <HackathonRound /> },

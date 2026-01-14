@@ -17,6 +17,14 @@ export interface Application {
       name: string;
     };
   };
+  user?: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    bio?: string;
+  };
 }
 
 export const applicationService = {
@@ -35,6 +43,21 @@ export const applicationService = {
   async getMyApplications(): Promise<Application[]> {
     const response = await api.get<{ success: boolean; data: Application[] }>(
       "/applications/me"
+    );
+    return response.data.data;
+  },
+
+  async getJobApplications(jobId: string): Promise<Application[]> {
+    const response = await api.get<{ success: boolean; data: Application[] }>(
+      `/applications/job/${jobId}`
+    );
+    return response.data.data;
+  },
+
+  async updateApplicationStatus(id: string, status: string): Promise<Application> {
+    const response = await api.patch<{ success: boolean; data: Application }>(
+      `/applications/${id}/status`,
+      { status }
     );
     return response.data.data;
   },

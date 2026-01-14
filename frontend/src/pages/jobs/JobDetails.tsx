@@ -11,11 +11,13 @@ import { jobsService } from "@/services/jobs.service";
 import { formatDate, formatCurrency } from "@/utils/format";
 import { MapPin, Briefcase, ArrowLeft } from "lucide-react";
 import { ApplyJobDialog } from "@/components/ApplyJobDialog";
+import { authStore } from "@/store/auth.store";
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const { user } = authStore();
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", id],
@@ -46,6 +48,10 @@ export default function JobDetails() {
       </ProtectedLayout>
     );
   }
+
+
+  const isOwner = user?.id === job?.postedById;
+  const isCompany = user?.role === "COMPANY";
 
   return (
     <ProtectedLayout>
@@ -119,12 +125,27 @@ export default function JobDetails() {
             <div className="lg:col-span-1">
               <Card className="sticky top-20">
                 <CardHeader>
-                  <CardTitle>Apply for this job</CardTitle>
+                  <CardTitle>
+                    {isOwner ? "Manage Job" : "Apply for this job"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button className="w-full" onClick={() => setShowApplyDialog(true)}>
-                    Apply Now
-                  </Button>
+                  {isOwner ? (
+                    <Button 
+                      className="w-full" 
+                      onClick={() => navigate(`/jobs/${job.id}/manage`)}
+                    >
+                      View Applications
+                    </Button>
+                  ) : !isCompany ? (
+                    <Button className="w-full" onClick={() => setShowApplyDialog(true)}>
+                      Apply Now
+                    </Button>
+                  ) : (
+                    <div className="rounded-md bg-muted p-4 text-sm text-muted-foreground text-center">
+                      Company accounts cannot apply to jobs.
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Posted on {formatDate(job.createdAt)}
                   </p>
